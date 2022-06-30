@@ -1,0 +1,246 @@
+
+---
+title: 'Section 5: Machine Learning'
+author: "Chen Lianghe"
+date: '2022-06-30'
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+## Overview
+
+Using the dataset from https://archive.ics.uci.edu/ml/datasets/Car+Evaluation, create a machine learning model to predict the buying price of a car given the following parameters:
+
+  1. Maintenance = High
+  2. Number of Doors = 4
+  3. Lug Boot Size = Big
+  4. Safety = High
+  5. Class Value = Good
+
+## Loading of Libraries
+
+```{r}
+
+# Loading of Libraries
+library(caret)
+library(RColorBrewer)
+library(corrplot)
+library(rpart)
+library(rpart.plot)
+library(rattle)
+library(randomForest)
+library(gbm)
+library(stringr)
+library(latex2exp)
+
+```
+
+## Loading and Cleaning of Data
+
+```{r}
+
+# Loading the Data
+train_in <- read.csv('./car_train.csv', header=T)
+test_in <- read.csv('./car_test.csv', header=T)
+
+train_in[c('buying_price', 'maintenance', 'no_of_doors', 'capacity_persons', 'lug_boot_size', 'safety', 'class')] <- str_split_fixed(train_in$car_train, ',', 7)
+train_in <- train_in[c('buying_price', 'maintenance', 'no_of_doors', 'capacity_persons', 'lug_boot_size', 'safety', 'class')]
+
+test_in[c('buying_price', 'maintenance', 'no_of_doors', 'capacity_persons', 'lug_boot_size', 'safety', 'class')] <- str_split_fixed(test_in$car_test, ',', 7)
+test_in <- test_in[c('buying_price', 'maintenance', 'no_of_doors', 'capacity_persons', 'lug_boot_size', 'safety', 'class')]
+
+dim(train_in)
+dim(test_in)
+
+# Cleaning the Data
+trainData <- train_in[, colSums(is.na(train_in)) == 0]
+testData <- test_in[, colSums(is.na(test_in)) == 0]
+
+dim(trainData)
+dim(testData)
+
+```
+
+## Preparing Datasets for Prediction
+
+We split the training data (trainData) into 50% for training (trainData) and 50% for cross validation (validData). This will help us to determine out-of-sample errors. We will then use our prediction models to predict the buying price of the car for our test case (testData).
+
+```{r}
+
+# Splitting the Training Data
+set.seed(1234)
+inTrain <- createDataPartition(trainData$buying_price, p = 0.5, list = FALSE)
+trainData <- trainData[inTrain, ]
+validData <- trainData[-inTrain, ]
+
+dim(trainData)
+dim(validData)
+
+trainData <- as.data.frame(lapply(trainData, as.numeric))
+validData <- as.data.frame(lapply(validData, as.numeric))
+
+```
+
+## Plotting a Correlation Plot for Training Data
+
+```{r}
+
+# Plotting a Correlation Plot for Training Data
+cor_mat <- cor(trainData)
+corrplot(cor_mat, order = "FPC", method = "color",
+         type = "upper", tl.cex = 0.8, tl.col = rgb(0, 0, 0))
+
+```
+
+In the Correlation Plot shown above, the variables that are highly correlated are highlighted at the dark blue intersections. We used a threshold value of 0.95 to determine these highly correlated variables.
+
+## Building our Prediction Models
+
+For this Section, we will use 3 different algorithms to predict the outcome (buying_price). The algorithms are as follows:
+
+  1. Classification Tree
+  2. Generalized Boosted Models
+  3. Random Decision Forests
+
+## Prediction with Classification Tree
+
+```{r}
+
+# Building our Classification Tree Model with Training Data
+set.seed(12345)
+decisionTreeMod1 <- rpart(buying_price ~ ., data = trainData, method = "class")
+fancyRpartPlot(decisionTreeMod1)
+
+```
+
+Next, we cross validate our Classification Tree Model with our validation data (validData), to determine the accuracy of this prediction model.
+
+```{r}
+
+# Cross Validating the Classification Tree Model with Validation Data
+Prediction_Matrix_CT <- predict(decisionTreeMod1, validData, type = "class")
+cmtree <- confusionMatrix(table(Prediction_Matrix_CT, validData$buying_price))
+cmtree
+
+```
+
+```{r}
+
+# Plotting Results in a Matrix
+plot(cmtree$table, col = cmtree$byClass,
+     main = paste("Classification Tree: Accuracy =",
+                  round(cmtree$overall['Accuracy'], 4)))
+
+```
+
+From the Classification Tree Matrix shown above, the accuracy of our Classification Tree Model is 0.3681. Therefore, its out-of-sample error is 0.6319.
+
+## Prediction with Generalized Boosted Models
+
+```{r}
+
+# Building our Generalized Boosted Models with Training Data
+set.seed(12345)
+modGBM <- gbm(formula = as.factor(buying_price) ~ ., distribution = "gaussian",
+              data = trainData, n.trees = 1000, interaction.depth = 3,
+              shrinkage = 0.1, cv.folds = 5, n.cores = NULL, verbose = FALSE)
+print(modGBM)
+
+# Plotting our Generalized Boosted Models
+gbm.perf(modGBM, method = "cv")
+
+```
+
+Next, we cross validate our Generalized Boosted Models with our validation data (validData), to determine the accuracy of this prediction model.
+
+```{r}
+
+# Cross Validating the Generalized Boosted Models with Validation Data
+Prediction_Matrix_GBM <- round(predict(modGBM, newdata=validData, n.trees=1000), digits=0)
+cmGBM <- confusionMatrix(table(Prediction_Matrix_GBM, validData$buying_price))
+cmGBM
+
+```
+
+```{r}
+
+# Plotting Results in a Matrix
+plot(cmGBM$table, col = cmGBM$byClass,
+     main = paste("Generalized Boosted Models: Accuracy =",
+                  round(cmGBM$overall['Accuracy'], 4)))
+
+```
+
+From the Generalized Boosted Models Matrix shown above, the accuracy of our Generalized Boosted Models is 0.4213. Therefore, its out-of-sample error is 0.5787.
+
+## Prediction with Random Decision Forests
+
+```{r}
+
+# Building our Random Decision Forests Model with Training Data
+set.seed(12345)
+controlRF <- trainControl(method="cv", number=10, verboseIter=FALSE)
+modRF1 <- train(as.factor(buying_price) ~ ., data=trainData,
+                method="rf", ntree=1000, trControl=controlRF)
+modRF1$finalModel
+
+# Plotting our Random Decision Forests Model
+plot(modRF1)
+
+```
+
+Next, we cross validate our Random Decision Forests Model with our validation data (validData), to determine the accuracy of this prediction model.
+
+```{r}
+
+# Cross Validating the Random Decision Forests Model with Validation Data
+Prediction_Matrix_RDF <- predict(modRF1, newdata=validData, type = "raw")
+cmrf <- confusionMatrix(table(Prediction_Matrix_RDF, validData$buying_price))
+cmrf
+
+```
+
+```{r}
+
+# Plotting Results in a Matrix
+plot(cmrf$table, col = cmrf$byClass,
+     main = paste("Random Decision Forests: Accuracy =",
+                  round(cmrf$overall['Accuracy'], 4)))
+
+```
+
+From the Random Decision Forests Matrix shown above, the accuracy of our Random Decision Forests Model is 0.5741. Therefore, its out-of-sample error is 0.4259.
+
+## Best Prediction Model
+
+The accuracy values of the 3 prediction models are as follow:
+
+  1. Classification Tree = 0.3681
+  2. Generalized Boosted Models = 0.4213
+  3. Random Decision Forests = 0.5741
+
+From this comparison, we concluded that the Random Decision Forests Model is the best prediction model for our analysis.
+
+```{r}
+
+# Using our Random Decision Forests Model on Test Data
+testData <- as.data.frame(lapply(testData, as.numeric))
+Results <- predict(modRF1, newdata=testData, type = "raw")
+testData[, "buying_price"] <- Results
+write.csv(testData,'./car_result.csv', row.names = FALSE)
+
+```
+
+Our Random Forests Model was able to predict the buying price of the car for our test case (testData).
+
+Essentially, for a car that has a high maintenance price, with 4 doors, a 4-seater capacity, a big luggage boot size, high estimated safety, and a good class value, its buying price was predicted to be low. This could be due to many various factors that could attribute to this correlation between buying price and the other predictive attributes used in this prediction model.
+
+The generated output (Results) contains this information and it has been added back into the test data accordingly. You may refer to the new test data file (car_result.csv) for more information.
