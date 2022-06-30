@@ -1,6 +1,6 @@
 ## Section 2: Databases
 
-For this section, I set up a PostgreSQL database using the base `docker` image [here](https://hub.docker.com/_/postgres). I created a `Dockerfile` which will stand up my database with the DDL statements needed to create the necessary tables. This was derived from the SQL file: `world.sql` which is the PostgreSQL port of the MySQL “World” database. For this car dealership, each table contains the following fields, characteristics and information:
+For this section, I set up a PostgreSQL database using the base `docker` image [here](https://hub.docker.com/_/postgres). I created a `Dockerfile` which will stand up my database with the DDL statements needed to create the necessary tables. This was derived from the SQL file: `world.sql` which is the PostgreSQL part of the MySQL “World” database. For this car dealership, each table contains the following fields, characteristics and information:
 
 - SalesID --> Unique identifier for each sale transaction.
 - Manufacturer --> Car manufacturer.
