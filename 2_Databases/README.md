@@ -18,4 +18,4 @@ I wrote SQL statements to query information from the database for each of the fo
 1. I want to know the list of our customers and their spending.
 2. I want to find out the top 3 car manufacturers that customers bought by sales (quantity) and the sales number for it in the current month.
 
-The SQL statements and queries are saved in the SQL file: Cars_Script.sql.
+The SQL statements and queries are saved in the SQL file: `Cars_Script.sql`.
