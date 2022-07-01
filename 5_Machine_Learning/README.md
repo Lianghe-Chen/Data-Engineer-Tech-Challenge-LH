@@ -9,7 +9,7 @@ For this section, I used the dataset from [here](https://archive.ics.uci.edu/ml/
 - Class Value = Good
 
 From the dataset downloaded, I derived three csv files: `car_data.csv`, `car_names.csv` and `car_readme.csv` which contain information about this dataset.
-The csv file: `car_train.csv` is a copy of the csv files: `car_data.csv`. I renamed it for use in the machine learning model.
+The csv file: `car_train.csv` is a copy of the csv file: `car_data.csv`. I renamed it for use in the machine learning model.
 The csv file: `car_test.csv` contains the abovementioned parameters for the car in our test case.
 
 Essentially, I created three machine learning prediction models using the R programming language and RStudio:
